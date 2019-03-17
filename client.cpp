@@ -32,12 +32,22 @@ int main()
 		return -1;
 	}
 
-	char snd[] = "hello there i'm client!";
-	send(sock_fd, snd, strlen(snd), 0);
+	while(1)
+	{
 
-	char buff[255] = "";
-	read(sock_fd, buff, 255);
-	std::cout << "buff: " << buff << std::endl; 
+
+		std::string s;
+		std::cout << ">";
+		std::getline(std::cin, s);		
+
+		send(sock_fd, s.c_str(), s.length(), 0);
+	}
+
+//	char snd[] = "hello there i'm client!";
+
+//	char buff[255] = "";
+//	read(sock_fd, buff, 255);
+//	std::cout << "buff: " << buff << std::endl; 
 
 	return 0;
 }
