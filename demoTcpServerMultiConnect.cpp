@@ -12,20 +12,25 @@
 /* ---------------------------------------------------------------------------------------------------------
 DESCRIPTION
 this application demonstrates a TCP server application that listens and accept any client application
-that wishes to connect to it.
-it uses the port below as listening port */
-#define PORT 54000
-/*
-it creates a listening port and waits for a client to request connection. 
-once it receives and accept a connection from a client, it stops listening and then wait for 
-message (in bytes) from client and prints it out. the max number of bytes the message can accept is */
-#define MAXBYTEMESSAGE 256
-/*
-it will keep printing out any message sent for by the client until it receives 'quit'.
+that wishes to connect to it. it can accept multiple clients connected simultaneously.
+connected clients can send text message to this server and it will broadcast the message to other
+clients connected to it. It uses select() to allow multiple client connection and manage their messages.
 
-optionally, it will print the port information of the client that connects to it using getnameinfo().
-you can turn this off by setting this to false */
-#define GETNAMEINFO true
+COMPILE
+g++ demoTcpServerMultiConnect.cpp -o <exe>
+
+HOW TO USE
+<exe> <port>
+- <port> is optional. uses #PORT by default
+- compile demoTcpClient.cpp and run its binary as compliment to this software.
+--------------------------------------------------------------------------------------------------------- */
+
+// default listenting port used if not specified in command line 
+#define PORT 54000
+
+// it can receive up to a specific number of bytes of message. the size is specified below
+#define MAXBYTEMESSAGE 4096
+
  
 int main(int argc, char **argv)
 {
@@ -53,10 +58,6 @@ int main(int argc, char **argv)
 		std::cerr << "Can't create a socket! Quitting" << std::endl;
 		return -1;
 	}
-
-	// create variable to hold max file descriptor value. needed for select() later
-	int nMaxFD = fdSocketToListenTo;
-	std::cout << "maxFD: " << nMaxFD << std::endl;
 
 	/* ---------------------------------------------------------------------------------------------------------
 	we now have a listening socket, but it does not have an address. no one can really connect to it because
@@ -104,20 +105,29 @@ int main(int argc, char **argv)
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------
-
+	create fd_set variable and store the file descriptors for listening port. the max fd value is required
+	by select() so must get it
 	--------------------------------------------------------------------------------------------------------- */
 	fd_set fds;
 	FD_ZERO(&fds);
 	FD_SET(fdSocketToListenTo, &fds);
 
-	/* ---------------------------------------------------------------------------------------------------------
+	// create variable to hold max file descriptor value. needed for select() later
+	int nMaxFD = fdSocketToListenTo;
 
+	/* ---------------------------------------------------------------------------------------------------------
+	enter into app loop and monitor all sockets' file descriptor if changes happen to any of them.
+	if there's an incoming connection request, listening port's file descriptor is set. connection to 
+	server will be handled accordingly. 
+	if incoming message request occurs, the sending client's file descriptor is set. handle it accordingly.
 	--------------------------------------------------------------------------------------------------------- */
 	while(1)
 	{
+		// we'll be blocking here and wait for any file descriptor ready to be read.
 		fd_set ready = fds;
 		int n = select(nMaxFD + 1, &ready, NULL, NULL, NULL);
 
+		// check all file descriptors and find the one that is ready
 		for (int i = 0; i <= nMaxFD; i++)
 		{
 			// only if this is the socket ready for reading
@@ -126,6 +136,8 @@ int main(int argc, char **argv)
 			// is it the listening socket?
 			if (i == fdSocketToListenTo)
 			{
+				// try to allow the incoming client to connect. if successful, the port info of
+				// the client will be stored in sockaddr_in structure
 			 	sockaddr_in addrClient;
 			    	socklen_t nAddrClient = sizeof(addrClient); 
 			    	int fdClientSocket = accept(fdSocketToListenTo, (sockaddr*)&addrClient, &nAddrClient);
@@ -134,17 +146,19 @@ int main(int argc, char **argv)
 					std::cout << "ERROR: Something went wrong during accept()!" << std::endl;
 					continue;
 				}			
+				// if connection is successful, let's add this client's file descriptor to our fd_set
 				FD_SET(fdClientSocket, &fds);
 				nMaxFD = fdClientSocket > nMaxFD? fdClientSocket : nMaxFD;
-				std::cout << "New client just connected: " << fdClientSocket << std::endl;
+				std::cout << "New client [" <<  fdClientSocket << "] connected at port: " << ntohs(addrClient.sin_port) << std::endl;
 			}
 			// it must be an incomming message from one of the clients
 			else
 			{
+				// read the message
 				char buf[MAXBYTEMESSAGE];
 				int nBytesReceived = recv(i, buf, MAXBYTEMESSAGE, 0);
 
-				// this client is exiting
+				// this client is disconnected. 
 				if (nBytesReceived <= 0)
 				{
 					close(i);	
@@ -153,7 +167,7 @@ int main(int argc, char **argv)
 					continue;
 				}
 
-				std::cout << "[" << i << "]" << "'" << std::string(buf, 0, nBytesReceived) << "'"  << std::endl;				
+				std::cout << "Incoming from [" << i << "] " << "'" << std::string(buf, 0, nBytesReceived) << "'"  << std::endl;				
 
 				// broadcast this message to all clients
 				for (int j = 0; j <= nMaxFD; j++)
@@ -163,97 +177,20 @@ int main(int argc, char **argv)
 
 					// skip the same client that send this message
 					if (j == i) continue;
-
-
-				
-
+					
+					// send it
 					std::stringstream msg;
 					msg << "[" << i << "]" << "'" << std::string(buf, 0, nBytesReceived) << "'";	
 					send(j, msg.str().c_str(), msg.str().length(), 0);
-					//send(j, buf, MAXBYTEMESSAGE + 1, 0);
 				}
 			}
 		}
 	}
- 
-	/* ---------------------------------------------------------------------------------------------------------
-	at this point, if any client makes a connection request to this server, we'll be able to accept that with
-	the use of accept(). accept() blocks this server application and remains here until it receives connection
-	request
-	-	1st argument specifies which sockect we are listening to, in this case it's the socket we set 
-		this server as its listening socket
-	-	2nd argument will be the socket address structure where the information (port, IP) of the 
-		incoming client that is trying to connect to will be stored.
-	-	accept() returns the socket of the client that connects to this server
-	--------------------------------------------------------------------------------------------------------- */
- 	sockaddr_in addrClient;
-    	socklen_t nAddrClient = sizeof(addrClient); 
-    	int fdClientSocket = accept(fdSocketToListenTo, (sockaddr*)&addrClient, &nAddrClient);
-	if (fdClientSocket == -1)
-	{
-		std::cout << "ERROR: Something went wrong during accept()!" << std::endl;
-		return -1;
-	}
- 
-	/* ---------------------------------------------------------------------------------------------------------
-	the next codes are optional. what it tries to do is get print the port information of both the server and
-	client
-	--------------------------------------------------------------------------------------------------------- */
-#if GETNAMEINFO
-	char client[NI_MAXHOST]; // Client's remote name
-    	char server[NI_MAXSERV]; // Service (i.e. port) the client is connect on
- 
-	memset(client, 0, NI_MAXHOST); // same as memset(host, 0, NI_MAXHOST);
-    	memset(server, 0, NI_MAXSERV);
 
-	if (getnameinfo((sockaddr*)&addrClient, sizeof(addrClient), client, NI_MAXHOST, server, NI_MAXSERV, 0) == 0)
-	{
-		std::cout << client << " is connected on port " << server << " (via getnameinfo())" << std::endl;
-	}
-	else
-	{
-		inet_ntop(AF_INET, &addrClient.sin_addr, client, NI_MAXHOST);
-		std::cout << client << " is connected on port " << ntohs(addrClient.sin_port) << " (via inet_ntop)" << std::endl;
-	}
- #endif
 	/* ---------------------------------------------------------------------------------------------------------
-	we don't need the listening port now as we already have a client connected to us
+	close the listening socket before you go
 	--------------------------------------------------------------------------------------------------------- */
 	close(fdSocketToListenTo);
- 
-	/* ---------------------------------------------------------------------------------------------------------
-	keep looping now while we wait for client to send message
-	--------------------------------------------------------------------------------------------------------- */
-	char buf[MAXBYTEMESSAGE];
-	while (true)
-	{
-		memset(buf, 0, MAXBYTEMESSAGE);
-
-		// recv() blocks the server and waits for client to send data
-		int nBytesReceived = recv(fdClientSocket, buf, MAXBYTEMESSAGE, 0);
-		if (nBytesReceived == -1)
-		{
-		    std::cerr << "Error in recv(). Quitting" << std::endl;
-		    break;
-		}
-
-		if (nBytesReceived == 0)
-		{
-		    std::cout << "Client disconnected " << std::endl;
-		    break;
-		}
-
-		std::string s(buf, 0, nBytesReceived);
-		if (s.compare(0, 4, "quit", 4) == 0) break;
-
-		std::cout << "'" << std::string(buf, 0, nBytesReceived) << "'"  << std::endl;
-
-		// Echo message back to client
-		//send(clientSocket, buf, bytesReceived + 1, 0);
-	}
-
-	// close the client's socket. we're done.
-	close(fdClientSocket);
 
 	return 0;
 }

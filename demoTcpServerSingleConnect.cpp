@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 
 	/* ---------------------------------------------------------------------------------------------------------
 	create a socket that we'll use to listen to an incoming connection request.
-	-	AF_INET means we are using IPv4 protocols as communication domain. I don't really know what this means...
+	-	AF_INET means we are using IPv4 protocols as communication domain. 
 	-	SOCK_STREAM is set as type. it means the sockect uses TCP or connection oriented protocol
 	-	returns this socket's file descriptor if successful
 	--------------------------------------------------------------------------------------------------------- */
