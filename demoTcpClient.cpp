@@ -106,8 +106,17 @@ int main(int argc, char **argv)
 	{
 		// we'll be blocking here and wait for any file descriptor ready to be read.
 		fd_set ready = fds;
+#if 0
 		int n = select(nMaxFD + 1, &ready, NULL, NULL, NULL);
+#else
+		struct timeval to;
+		to.tv_sec = 0;
+		to.tv_usec = 1000000; // 100 msec
 
+		int n = select(nMaxFD + 1, &ready, NULL, NULL, &to);
+		//std::cout << "time out" << std::endl;
+		if (n == 0) continue;
+#endif
 		// check all file descriptors and find the one that is ready
 		for (int i = 0; i <= nMaxFD; i++)
 		{
