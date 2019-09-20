@@ -13,7 +13,7 @@ DESCRIPTION
 this application demonstrates a TCP server application that listens and accept any client application
 that wishes to connect to it.
 it uses the port below as listening port */
-#define PORT 54000
+#define PORT 4000
 /*
 it creates a listening port and waits for a client to request connection. 
 once it receives and accept a connection from a client, it stops listening and then wait for 
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 	-	SOCK_STREAM is set as type. it means the sockect uses TCP or connection oriented protocol
 	-	returns this socket's file descriptor if successful
 	--------------------------------------------------------------------------------------------------------- */
-	int fdSocketToListenTo = socket(AF_INET, SOCK_STREAM, 0);
+	int fdSocketToListenTo = socket(AF_INET, SOCK_DGRAM, 0);
     	if (fdSocketToListenTo == -1)
 	{
 		std::cerr << "Can't create a socket! Quitting" << std::endl;
@@ -92,12 +92,14 @@ int main(int argc, char **argv)
 		-	SOMAXCONN is constant that defines maximum possible queue count. value varies from
 			system to system		
 	--------------------------------------------------------------------------------------------------------- */
+
+/*
 	if (listen(fdSocketToListenTo, SOMAXCONN) == -1)
 	{
 		std::cout << "ERROR: Something went wrong during listening!" << std::endl;
 		return -1;
 	}
- 
+ */
 	/* ---------------------------------------------------------------------------------------------------------
 	at this point, if any client makes a connection request to this server, we'll be able to accept that with
 	the use of accept(). accept() blocks this server application and remains here until it receives connection

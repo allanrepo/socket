@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 	-	SOCK_STREAM is set as type. it means the sockect uses TCP or connection oriented protocol
 	-	returns this socket's file descriptor if successful
 	--------------------------------------------------------------------------------------------------------- */
-	int fdSocketToListenTo = socket(AF_INET, SOCK_STREAM, 0);
+	int fdSocketToListenTo = socket(AF_INET, SOCK_DGRAM, 0);
     	if (fdSocketToListenTo == -1)
 	{
 		std::cerr << "Can't create a socket! Quitting" << std::endl;
@@ -98,13 +98,13 @@ int main(int argc, char **argv)
 		-	SOMAXCONN is constant that defines maximum possible queue count. value varies from
 			system to system		
 	--------------------------------------------------------------------------------------------------------- */
-
+/*
 	if (listen(fdSocketToListenTo, SOMAXCONN) == -1)
 	{
 		std::cout << "ERROR: Something went wrong during listening!" << std::endl;
 		return -1;
 	}
-
+*/
 	/* ---------------------------------------------------------------------------------------------------------
 	create fd_set variable and store the file descriptors for listening port. the max fd value is required
 	by select() so must get it
@@ -137,6 +137,16 @@ int main(int argc, char **argv)
 			// is it the listening socket?
 			if (i == fdSocketToListenTo)
 			{
+
+
+    char buffer[256]; 
+    struct sockaddr_in servaddr, cliaddr; 
+
+    int len, n; 
+    n = recvfrom(fdSocketToListenTo, (char *)buffer, 256,  MSG_WAITALL, ( struct sockaddr *) &cliaddr, (socklen_t*)&len); 
+    buffer[n] = '\0'; 
+    std::cout << buffer << std::endl;
+/*
 				// try to allow the incoming client to connect. if successful, the port info of
 				// the client will be stored in sockaddr_in structure
 			 	sockaddr_in addrClient;
@@ -151,6 +161,7 @@ int main(int argc, char **argv)
 				FD_SET(fdClientSocket, &fds);
 				nMaxFD = fdClientSocket > nMaxFD? fdClientSocket : nMaxFD;
 				std::cout << "New client [" <<  fdClientSocket << "] connected at port: " << ntohs(addrClient.sin_port) << std::endl;
+*/
 			}
 			// it must be an incomming message from one of the clients
 			else

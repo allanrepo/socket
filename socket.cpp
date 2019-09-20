@@ -12,14 +12,14 @@ CClient::~CClient()
 }
 
 bool CClient::connect(const std::string& ip, unsigned short port )
-{
+{ 
 	/* ---------------------------------------------------------------------------------------------------------
 	create a socket that we'll use to listen to an incoming connection request.
 	-	AF_INET means we are using IPv4 protocols as communication domain. 
 	-	SOCK_STREAM is set as type. it means the socket uses TCP or connection oriented protocol
 	-	returns this socket's file descriptor if successful
 	--------------------------------------------------------------------------------------------------------- */
-	m_fdSocket = socket(AF_INET, SOCK_STREAM, 0);	
+	m_fdSocket = socket(AF_INET, SOCK_DGRAM, 0);	
 	if (m_fdSocket == -1)
 	{
 		std::cerr << "ERROR: Failed to create socket!" << std::endl;
